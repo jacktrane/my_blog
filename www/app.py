@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #coding:utf-8
-__author__ = 'jacktrane wu'
+__author__ = 'jacktrane'
 
 import logging; logging.basicConfig(level=logging.INFO)
 
