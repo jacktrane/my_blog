@@ -13,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 import orm
 from coromethod import add_routes, add_static
 
-# import config.config
+from config.config import configs
 def init_jinja2(app, **kw):
   logging.info('init jinja2...')
   options = dict(
@@ -109,13 +109,56 @@ def response_factory(app, handler):
     return resp
   return response
 
+@asyncio.coroutine
+def auth_factory(app, handler):
+    @asyncio.coroutine
+    def auth(request):
+        logging.info('check user: %s %s' % (request.method, request.path))
+        request.__user__ = None
+        cookie_str = request.cookies.get(COOKIE_NAME)
+        if cookie_str:
+            user = yield from cookie2user(cookie_str)
+            if user:
+                logging.info('set current user: %s' % user.email)
+                request.__user__ = user
+        return (yield from handler(request))
+    return auth
+
+# 解密cookie:
+@asyncio.coroutine
+def cookie2user(cookie_str):
+    '''
+    Parse cookie and load user if cookie is valid.
+    '''
+    if not cookie_str:
+        return None
+    try:
+        L = cookie_str.split('-')
+        if len(L) != 3:
+            return None
+        uid, expires, sha1 = L
+        if int(expires) < time.time():
+            return None
+        user = yield from User.find(uid)
+        if user is None:
+            return None
+        s = '%s-%s-%s-%s' % (uid, user.passwd, expires, _COOKIE_KEY)
+        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
+            logging.info('invalid sha1')
+            return None
+        user.passwd = '******'
+        return user
+    except Exception as e:
+        logging.exception(e)
+        return None
+
 # def index(request):
 #   return web.Response(body=b'<h1>web app</h1>')
 #初始化
 @asyncio.coroutine
 def init(loop):
-  yield from orm.create_pool(loop=loop, user='root', password='root', database='my_blog')
-  # yield from orm.create_pool(loop=loop, user=config.user, password=config.password, database=config.database)
+  # yield from orm.create_pool(loop=loop, user='root', password='root', database='my_blog')
+  yield from orm.create_pool(loop=loop, **configs.db)
   app = web.Application(loop=loop, middlewares=[
     logger_factory, response_factory
   ])
