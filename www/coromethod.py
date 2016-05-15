@@ -81,11 +81,11 @@ class RequestHandler(object):
   def __init__(self, app, func):
     self._app = app
     self._func = func
-    self._has_request_arg = has_request_arg(fn)
-    self._has_var_kw_arg = has_var_kw_arg(fn)
-    self._has_named_kw_args = has_named_kw_args(fn)
-    self._named_kw_args = get_named_kw_args(fn)
-    self._required_kw_args = get_required_kw_args(fn)
+    self._has_request_arg = has_request_arg(func)
+    self._has_var_kw_arg = has_var_kw_arg(func)
+    self._has_named_kw_args = has_named_kw_args(func)
+    self._named_kw_args = get_named_kw_args(func)
+    self._required_kw_args = get_required_kw_args(func)
     
   @asyncio.coroutine
   def __call__(self, request):
@@ -144,7 +144,7 @@ class RequestHandler(object):
 
 # 添加静态文件夹的路径
 def add_static(app):
-  path = os.path.join(os.path.dirname(__path__[0]), 'static')
+  path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
   app.router.add_static('/static/', path)
   logging.info('add static %s => %s' % ('/static/', path))
 

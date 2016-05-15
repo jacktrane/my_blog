@@ -11,7 +11,9 @@ from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 
 import orm
-from coromethod import add_routes
+from coromethod import add_routes, add_static
+
+# import config.config
 def init_jinja2(app, **kw):
   logging.info('init jinja2...')
   options = dict(
@@ -113,11 +115,12 @@ def response_factory(app, handler):
 @asyncio.coroutine
 def init(loop):
   yield from orm.create_pool(loop=loop, user='root', password='root', database='my_blog')
+  # yield from orm.create_pool(loop=loop, user=config.user, password=config.password, database=config.database)
   app = web.Application(loop=loop, middlewares=[
     logger_factory, response_factory
   ])
   init_jinja2(app, filters=dict(datetime=datetime_filter))
-  add_routes(app, 'handler')
+  add_routes(app, 'handlers')
   add_static(app)
 #  app.router.add_route('GET', '/', index)
   srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 8000)
