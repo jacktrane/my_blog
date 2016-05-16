@@ -17,6 +17,16 @@ from config.config import configs
 COOKIE_NAME = 'jacsession'
 _COOKIE_KEY = configs.session.secret
 
+def get_page_index(page_str):
+  p = 1
+  try:
+    p = int(page_str)
+  except ValueError as e:
+    pass
+  if p < 1:
+    p = 1
+  return p
+
 # 计算加密cookie:
 def user2cookie(user, max_age):
     # build cookie string by: id-expires-sha1
@@ -53,7 +63,7 @@ def cookie2user(cookie_str):
         logging.exception(e)
         return None
 
-        
+
 # @get('/')
 # @asyncio.coroutine
 # def index(request):
@@ -90,6 +100,26 @@ def index(request):
 def register():
   return {
     '__template__': 'register.html'
+  }
+
+@get('/signin')
+def signin():
+  return {
+    '__template__': 'signin.html'
+  }
+  
+@get('/manage/blogs/create')
+def blog_edit():
+  return {
+    '__template__': 'manage_blog_edit.html'
+  }
+
+
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+  return {
+    '__template__': 'manage_blogs.html',
+    'page_index': get_page_index(page)
   }
 
 _RE_EMAIL = re.compile(r'^[a-zA-Z0-9\.\-\_]+\@[a-zA-Z0-9\-\_]+(\.[a-zA-Z0-9\-\_]+){1,4}$')
@@ -144,7 +174,7 @@ def authenticate(*, email, passwd):
     sha1.update(passwd.encode('utf-8'))
     if user.passwd != sha1.hexdigest():
         raise APIValueError('passwd', 'Invalid password.')
-    # authenticate ok, set cookie:
+    # 保存cookie
     r = web.Response()
     r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
     user.passwd = '******'
@@ -152,3 +182,27 @@ def authenticate(*, email, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+# #博客编写
+# @post('/api/blogs')
+# def api_create_blog(request, *, name, summary, content):
+#   check_admin(request)
+#   if not name or not name.strip():
+#     raise APIValueError('name', 'name cannot be empty.')
+#   if not summary or not summary.strip():
+#     raise APIValueError('summary', 'summary cannot be empty.')
+#   if not content or not content.strip():
+#     raise APIValueError('content', 'content cannot be empty.')
+#   blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())
+#   yield from blog.save()
+#   return blog
+
+# 博客列表
+@get('/api/blogs')
+def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = yield from Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = yield from Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
