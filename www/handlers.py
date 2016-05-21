@@ -108,6 +108,25 @@ def signin():
     '__template__': 'signin.html'
   }
   
+@get('/signout')
+def signout(request):
+  referer = request.headers.get('Referer')
+  r = web.HTTPFound(referer or '/')
+  r.set_cookie(COOKIE_NAME, '-deleted-', max_age=0, httponly=True)
+  logging.info('user signed out.')
+  return r
+
+@get('/manage/')
+def manage():
+    return 'redirect:/manage/comments'
+
+@get('/manage/comments')
+def manage_comments(*, page='1'):
+  return {
+    '__template__': 'manage_comments.html',
+    'page_index': get_page_index(page)
+  }
+  
 @get('/manage/blogs/create')
 def blog_edit():
   return {
@@ -121,6 +140,7 @@ def manage_blogs(*, page='1'):
     '__template__': 'manage_blogs.html',
     'page_index': get_page_index(page)
   }
+
 
 _RE_EMAIL = re.compile(r'^[a-zA-Z0-9\.\-\_]+\@[a-zA-Z0-9\-\_]+(\.[a-zA-Z0-9\-\_]+){1,4}$')
 _RE_SHA1 = re.compile(r'^[a-f0-9]{40}$')
